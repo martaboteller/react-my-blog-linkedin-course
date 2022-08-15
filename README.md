@@ -80,7 +80,7 @@ my-blog-backend/
 ## Connecting front-end with back-end
 
 1. Install CORS
-2. Add the porxy property at package.json
+2. Add the proxy property at package.json
 
 ```javascript
 "proxy": http://localhost:8000"
