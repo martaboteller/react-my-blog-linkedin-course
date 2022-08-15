@@ -75,89 +75,168 @@ my-blog-backend/
 └── utils/
 ```
 
-<br/>
+<br/><br/>
 
-## Start local MongoDB
+## Connecting front-end with back-end
 
-```
-mongod --config /usr/local/etc/mongod.conf --fork
-```
-
-## Heroku preparation
-
-<br/>
-
-###### _At angular.json:_
+1. Install CORS
+2. Add the porxy property at package.json
 
 ```javascript
-"options": {"outputPath": "../server/public",...
+"proxy": http://localhost:8000"
 ```
 
-###### _Create the frontend dist:_
-
-```
-ng build
-```
-
-###### _At employee.service.ts_ - redefine URL_API
-
-```
-readonly URL_API = 'api/employees';
-```
-
-###### _Use env variables:_
+3. Delete first part of fetch commands
 
 ```javascript
-require('dotenv').config();
-```
-
-```
-process.env.MONGO_CONNECTION_STRING
-proess.env.PORT
-```
-
-###### _Define static route:_
-
-```javascript
-app.use(express.static(path.join(__dirname, '../public')));
-```
-
-###### _Redirect to frontend:_
-
-```javascript
-app.get('/', function (req, res) {
-  res.sendFile('../public/index.html');
-});
+const result = await fetch(`/api/articles/${articleName}/add-comment`, {
+      method: 'post',
+      body: JSON.stringify({ username: name, text: comment }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
 ```
 
 <br/><br/>
 
-## Heroku deployment
+## Preparing the app for release
+
+1. Change my-blog/public/index.html
+   ```html
+   <title>My Blog</title>
+   ```
+2. Change my-blog/public/manifest.json
+   ```javascript
+   "short_name": "My Blog",
+   "name": "My Blog - Following Linkedin Tutorial",
+   ```
+3. Build the project
+   ```
+   npm run build
+   ```
+4. Copy the created folder to my-blog-backend/src/build
+5. In server.js add
+   ```javascript
+   import path from 'path';
+   app.use(express.static(path.join(__dirname,'/build')));
+   app.get('*', (req,res)=>{res.sendFile(path.join(__dirname + '/build/index.html))});
+   ```
+
+<br/><br/>
+
+## AWS Deployment
+
+<br/>
+<h4>Creating and SSHing into AWS instance</h4>
+
+1. Log into AWS Management Console
+2. Select EC2
+3. Select Launch Instance and Amazon Linux 2 AMI
+4. Leave it with the defaults, Review and Launch, then Launch.
+5. Create a new key pair, providing a name, i.e my-blog-key. This will download a .pem file
+6. Open a terminal and move the downloaded file into .ssh folder
+7. At AWS site select the running instance and copy the public DNS address. Provide permissions and connect:
+   ```
+   chnod 400 /.ssh/my-blog-key.pem
+   ssh -i /.ssh/my-blog-key.em ec2-user@[copied public dns]
+   ```
+
+<h4>Setting up an AWS instance</h4>
+
+1. Install git
+
+   ```
+   sudo yum install git
+   ```
+
+2. Install nvm
+
+   ```
+   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
+   ```
+
+   ```
+     . ~/.nvm/nvm.sh
+   ```
+
+   ```
+   nvm install --lts
+   ```
+
+3. Install npm
+   ```
+   npm install -g npm@latest
+   ```
+4. Install Mongodb
+
+   ```
+   sudo nano /etc/yum.repos.d/mongodb-org-6.0.repo
+   ```
+
+   Copy content of this [site](https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-amazon/#install-mongodb-community-edition) to the doc.
+
+   ```
+   sudo yum install -y mongodb-org
+   ```
+
+5. Start Mongodb and create database
+   ```
+   sudo service mongod start
+   ```
+   ```
+   mongo
+   ```
+   ```
+   use my-blog
+   db.articles.insert([
+     {
+       name:'learn-react',
+       upvotes:0,
+       comments:[],
+     },{
+       name:'learn-node',
+       upvotes:0,
+       comments:[],
+     },{
+       name:'my-tougths-on-resumes',
+       upvotes:0,
+       comments:[],
+     }
+   ])
+   ```
 
 <br/>
 
-###### _Git preparation:_
+<h4>Running a full-stack app on AWS</h4>
 
-```javascript
-git init
-git add .
-git commit -m 'message'
-```
+1. Copy the github clone url of the repo
+2. At AWS terminal:
+   ```
+   git clone [the copied address]
+   ```
+   ```
+   cd my blog
+   ```
+   ```
+   npm install
+   ```
+3. Install Forever package to keep server running
+   ```
+   npm install -g forever
+   ```
+   ```
+   forever start -c "npm start" .
+   ```
+   ###### Shows the port where is running:
+   ```
+   forever list
+   ```
+   ```
+   sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-ports 8000
+   ```
+4. Select the runnning instance at AWS. Edit the security group at Inbound tab. Add rule, http, from source 'anywhere' and save it.
 
-###### _Heroku preparation:_
-
-```javascript
-heroku login
-heroku create -a example-app
-git remote -v //list all remote projects
-heroku git:remote -a example-app
-```
-
-###### _Deploy:_
-
-```javascript
-git push heroku master
-```
+5. App runnning at the DNS public address!
 
 <br/><br/>
 
@@ -166,9 +245,8 @@ git push heroku master
 - [x] Configure with local MongoDB database
 - [x] Configure with atlas MongoDB database
 - [x] Form validation check
-- [ ] Amazon Web Services (AWS) deployment
+- [x] Amazon Web Services (AWS) deployment
 - [ ] Resposive frontend
-- [ ] Convert .subscribe() -> observables
 
 <br/>
 
